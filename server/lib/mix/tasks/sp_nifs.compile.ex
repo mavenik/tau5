@@ -42,6 +42,14 @@ defmodule Mix.Tasks.SpNifs.Compile do
     compile_macos_arm("sp_link")
   end
 
+  defp compile_spmidi(:linux, :x64) do
+    compile_linux_x64("sp_midi")
+  end
+  
+  defp compile_splink(:linux, :x64) do
+    compile_linux_x64("sp_link")
+  end
+
   defp compile_splink(os, arch) do
     Logger.info("Uknown OS or architecture to compile splink for: #{inspect([os, arch])}")
   end
@@ -83,14 +91,6 @@ defmodule Mix.Tasks.SpNifs.Compile do
   defp compile_win_x64(proj) do
     Logger.info("Compiling #{proj} for Windows x64")
     File.mkdir_p("deps/#{proj}/build")
-  defp compile_spmidi(:linux, :x64) do
-    compile_linux_x64("sp_midi")
-  end
-  
-  defp compile_splink(:linux, :x64) do
-    compile_linux_x64("sp_link")
-  end
-
 
     File.cd!("deps/#{proj}/build", fn ->
       {cmake_output, cmake_status} =
