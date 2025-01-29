@@ -4,8 +4,6 @@ defmodule Mix.Tasks.SpNifs.Compile do
 
   @impl true
   def run(_args) do
-    IO.puts("Compiling SP Link")
-
     case :os.type() do
       {:unix, :darwin} -> compile(:macos, arch())
       {:unix, :linux} -> compile(:linux, arch())
@@ -17,8 +15,69 @@ defmodule Mix.Tasks.SpNifs.Compile do
   end
 
   def compile(platform, arch) do
+    IO.puts("Compiling SP MIDI #{inspect([platform, arch])}")
     compile_spmidi(platform, arch)
+
+    IO.puts("Compiling SP Link #{inspect([platform, arch])}")
     compile_splink(platform, arch)
+  end
+
+  defp compile_spmidi(:win, :x64) do
+    compile_win_x64("sp_midi")
+  end
+
+  defp compile_spmidi(:macos, :arm64) do
+    compile_macos_arm("sp_midi")
+  end
+
+  defp compile_spmidi(os, arch) do
+    Logger.info("Uknown OS or architecture to compile spmidi for: #{inspect([os, arch])}")
+  end
+
+  defp compile_splink(:win, :x64) do
+    compile_win_x64("sp_link")
+  end
+
+  defp compile_splink(:macos, :arm64) do
+    compile_macos_arm("sp_link")
+  end
+
+  defp compile_splink(os, arch) do
+    Logger.info("Uknown OS or architecture to compile splink for: #{inspect([os, arch])}")
+  end
+
+  defp compile_macos_arm(proj) do
+    Logger.info("Compiling #{proj} for for macOS arm64")
+    File.mkdir_p("deps/#{proj}/build")
+
+    File.cd!("deps/#{proj}/build", fn ->
+      {cmake_output, cmake_status} =
+        System.cmd("cmake", [
+          "-G",
+          "Unix Makefiles",
+          "-DCMAKE_OSC_ARCHITECTURES=ARM64",
+          "-DCMAKE_INSTALL_PREFIX=../../../priv/nif",
+          "-DCMAKE_OSX_DEPLOYMENT_TARGET=12",
+          "-DCMAKE_BUILD_TYPE=Release",
+          ".."
+        ])
+
+      Logger.debug("CMake output:\n#{cmake_output}")
+      if cmake_status != 0, do: raise("CMake failed with status #{cmake_status}")
+
+      {cmake_output, cmake_status} =
+        System.cmd("cmake", ["--build", ".", "--config", "Release"])
+
+      Logger.debug("CMake output:\n#{cmake_output}")
+      if cmake_status != 0, do: raise("CMake failed with status #{cmake_status}")
+
+      {cmake_output, cmake_status} =
+        System.cmd("cmake", ["--install", "."])
+
+      Logger.debug("CMake output:\n#{cmake_output}")
+      if cmake_status != 0, do: raise("CMake failed with status #{cmake_status}")
+      Logger.info("Building #{proj} for macOS arm64 complete")
+    end)
   end
 
   defp compile_win_x64(proj) do
@@ -53,49 +112,6 @@ defmodule Mix.Tasks.SpNifs.Compile do
       if cmake_status != 0, do: raise("CMake failed with status #{cmake_status}")
 
       Logger.info("Building #{proj} for Win x64 complete")
-    end)
-  end
-
-  defp compile_spmidi(:win, :x64) do
-    compile_win_x64("sp_midi")
-  end
-
-  defp compile_spmidi(os, arch) do
-    Logger.info("Uknown OS or architecture to compile spmidi for: #{inspect([os, arch])}")
-  end
-
-  defp compile_splink(:win, :x64) do
-    compile_win_x64("sp_link")
-  end
-
-  defp compile_splink(os, arch) do
-    Logger.info("Uknown OS or architecture to compile splink for: #{inspect([os, arch])}")
-  end
-
-  defp compile_splink(:macos, :arm64) do
-    Logger.info("Compiling for SPLink for macOS arm64")
-    File.mkdir_p("deps/sp_link/build")
-
-    File.cd!("deps/sp_link/build", fn ->
-      {cmake_output, cmake_status} =
-        System.cmd("cmake", [
-          "-G",
-          "Unix Makefiles",
-          "-DCMAKE_OSC_ARCHITECTURES=ARM64",
-          "-DCMAKE_INSTALL_PREFIX=../../../priv/nif",
-          "-DCMAKE_OSX_DEPLOYMENT_TARGET=12",
-          "-DCMAKE_BUILD_TYPE=Release",
-          ".."
-        ])
-
-      Logger.debug("CMake output:\n#{cmake_output}")
-      if cmake_status != 0, do: raise("CMake failed with status #{cmake_status}")
-
-      {cmake_output, cmake_status} = System.cmd("cmake", ["--install", "."])
-      Logger.debug("CMake output:\n#{cmake_output}")
-      if cmake_status != 0, do: raise("CMake failed with status #{cmake_status}")
-
-      Logger.info("Building SP Link for macOS arm64 complete")
     end)
   end
 
